@@ -5248,7 +5248,7 @@
                     el.className = 'form-control prompt-input';
                 }
                 el.id = item.id;
-                el.placeholder = item.placeholder;
+                el.value = item.placeholder;
                 el.addEventListener('input', updatePrompt);
                 div.appendChild(el);
                 c.appendChild(div);
@@ -5262,7 +5262,7 @@
             let tpl = templates[key].template;
             templates[key].structure.forEach(item => {
                 const el = document.getElementById(item.id);
-                const val = el ? (el.value || el.placeholder) : '';
+                const val = el ? el.value : '';
                 tpl = tpl.replace(new RegExp('<<<\\{' + item.id + '\\}>>>', 'g'), val);
             });
             document.getElementById('output').textContent = tpl;
