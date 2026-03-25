@@ -1,0 +1,5300 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>受恩長照 AI 提示詞產生器</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --bg-light: #f8fafc;
+            --card-shadow: 0 4px 6px -1px rgba(0,0,0,.07), 0 2px 4px -2px rgba(0,0,0,.05);
+            --card-radius: 12px;
+        }
+        body { background-color: var(--bg-light); font-family: 'Inter', 'Noto Sans TC', sans-serif; }
+        .navbar { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); }
+        .main-container { margin-top: 24px; margin-bottom: 60px; }
+        .card { border-radius: var(--card-radius); box-shadow: var(--card-shadow); border: 1px solid #e2e8f0; }
+        .form-control-lg { min-height: 120px; font-family: 'Noto Sans TC', monospace; font-size: 0.95rem; }
+        .output-container {
+            background-color: #f1f5f9; border: 1px dashed #cbd5e1; padding: 24px;
+            border-radius: 10px; position: relative; white-space: pre-wrap;
+            word-wrap: break-word; font-family: 'Noto Sans TC', monospace;
+            min-height: 200px; font-size: 0.95rem; line-height: 1.7;
+        }
+        .copy-btn { position: absolute; top: 12px; right: 12px; }
+        .template-count { font-size: 0.8rem; color: #64748b; margin-left: 6px; }
+        .filter-btn.active { font-weight: bold; }
+        .filter-btn { border-radius: 20px; padding: 6px 16px; font-size: 0.9rem; }
+        .hero-section {
+            background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+            color: white; padding: 40px 20px; border-radius: var(--card-radius);
+            text-align: center; margin-bottom: 24px;
+        }
+        .hero-section h1 { font-size: 1.8rem; font-weight: 800; }
+        .hero-section p { opacity: 0.85; font-size: 1rem; }
+        .stat-badge {
+            display: inline-block; background: rgba(255,255,255,0.15);
+            padding: 4px 14px; border-radius: 20px; font-size: 0.85rem; margin: 4px;
+        }
+        .info-card { background: #eff6ff; border-left: 4px solid var(--primary); padding: 16px; border-radius: 8px; margin-bottom: 16px; }
+        .footer { text-align: center; padding: 30px 0; color: #94a3b8; font-size: 0.85rem; }
+        .footer a { color: var(--primary); text-decoration: none; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1"><i class="bi bi-heart-pulse me-2"></i>受恩長照 AI 提示詞產生器</span>
+        </div>
+    </nav>
+
+    <div class="container main-container">
+        <div class="hero-section">
+            <h1>🏥 受恩長照 AI 提示詞產生器</h1>
+            <p class="mt-2">角色 × 情境 × 期望 — 一鍵生成專業長照 AI 指令</p>
+            <div class="mt-3">
+                <span class="stat-badge">📋 115 個專業模板</span>
+                <span class="stat-badge">🏢 6 個部門分類</span>
+            </div>
+            <div class="mt-2" style="font-size:0.8rem;opacity:0.7;">社工服務 20個 | 護理照護 19個 | 行政後勤 20個 | 活動設計 19個 | 居家服務 18個 | 督導管理 19個</div>
+        </div>
+
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="info-card">
+                    <strong>💡 使用方法：</strong>選擇你的部門和案例 → 參考或修改預設內容 → 複製生成的 Prompt → 貼到 ChatGPT / Gemini / Claude 使用
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-white p-3">
+                        <h5 class="mb-3"><i class="bi bi-funnel me-2"></i>1. 選擇部門與案例</h5>
+                        <div id="category-filters" class="mb-3 d-flex flex-wrap gap-2"></div>
+                        <select id="templateSelector" class="form-select form-select-lg"></select>
+                    </div>
+                    <div class="card-body p-4" id="prompt-form-container"></div>
+                </div>
+
+                <div class="card mt-4">
+                    <div class="card-header bg-white p-3">
+                        <h5 class="mb-0"><i class="bi bi-clipboard-check me-2"></i>2. 複製生成結果</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div id="output" class="output-container">請在上方選擇案例並填寫內容...</div>
+                        <button id="copyBtn" class="btn btn-primary copy-btn">
+                            <i class="bi bi-clipboard me-1"></i>複製
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer mt-5">
+            <p>受恩 AI 賦能長照講座｜2026.03.28</p>
+            <p>講師：<a href="https://www.autolab.cloud" target="_blank">黃敬峰（阿峰老師）</a>｜<a href="mailto:ai@autolab.cloud">ai@autolab.cloud</a></p>
+        </div>
+    </div>
+
+<script type="text/template-data">
+{
+    "name": "個案服務計畫書撰寫",
+    "category": "社工服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是一位有15年經驗的長照個案管理師，熟悉衛福部評鑑指標與ICF架構"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "我需要為一位78歲、中風後左側偏癱的男性個案撰寫季度服務計畫書。他目前使用輪椅、需協助進食，女兒是主要照顧者但白天需上班。目前使用居家服務每週3次、日間照顧每週2次。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請產出一份完整的個案服務計畫書，包含：問題清單（依優先順序）、短期與長期照護目標（符合SMART原則）、服務項目與頻率建議、跨專業團隊合作事項、家屬參與計畫。約1500字。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "家屬月度進度回報信",
+    "category": "社工服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是受恩日照中心的社工，寫信給個案李奶奶的女兒，語氣溫暖專業有同理心"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "李奶奶本月參加18天日照，出席率90%。最近特別喜歡手作課，上週做了一條串珠手鏈。血壓穩定130/80左右，食慾不錯午餐都能吃完。但最近有幾次叫錯同伴名字，認知方面需持續觀察。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫一封300字以內的家屬月報信：先報好消息、再提需觀察的地方、語氣溫暖有同理心、結尾邀請家屬回饋、附上下月活動預告。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "危機事件家屬回覆信",
+    "category": "社工服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是受恩日照中心的主任，回覆給張爺爺兒子的正式信件，態度誠懇不卑不亢"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "張爺爺3/25下午2:30在走廊滑倒，照服員3公尺外立即上前攙扶。左手肘輕微擦傷，已消毒包紮。經觀察無骨折或頭部碰撞，已通知家屬建議回診。家屬不滿質問為什麼沒人扶、走廊是不是太滑。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫一封400字的危機回覆信：先表達歉意和關心（不是認錯是同理）、客觀說明事件經過、說明已採取措施、列出3項改善行動、語氣誠懇不卑不亢。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "個案研討會議紀錄整理",
+    "category": "社工服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是專業的長照會議記錄整理員，熟悉團督和個案研討的會議記錄格式"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "今天個案研討會議的逐字稿重點：主任說A-015個案從輕度退化到中度，需重新評估照護計畫。張社工提到家屬希望增加日照天數從3天改5天。陳護理師反映該個案最近有夜間遊走行為，建議加裝床邊感應器。決議下週三前完成重新評估。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請整理成正式的個案研討會議紀錄，包含：會議基本資訊、討論議題摘要、各專業人員發言重點、決議事項（含負責人和完成日期）、追蹤事項。格式清楚條理分明。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "社會資源轉介評估",
+    "category": "社工服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是資深社工師，熟悉台灣長照2.0各項服務資源與社會福利制度"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "個案C-028，獨居85歲女性，輕度失智，女兒住外縣市每月探視一次。目前僅使用居家服務每週2次，但近期功能退化明顯，經常忘記吃藥和關瓦斯。經濟狀況中等，有老人年金和女兒每月匯款。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請評估並建議適合的社會資源轉介方案：列出可連結的長照服務、社會福利、社區資源，每項說明申請條件和預期效益。優先順序排列，並設計一份與家屬討論的資源說明表。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "年度服務成果報告",
+    "category": "社工服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是受恩社工部門主管，負責撰寫向董事會報告的年度服務成果"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "今年度服務數據：服務個案380位、服務人次4200、新收案58位、結案32位、家訪1200次、個案研討會議24次、家屬滿意度92%。重點事項：導入AI輔助記錄、新增失智症專區、舉辦6場家屬支持團體。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫一份年度服務成果報告，包含：服務量摘要（3個大數字開頭）、各項服務統計、重點成果亮點（用故事說）、待改善事項、明年度計畫方向。約2000字，語氣專業但有溫度。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "個案會談紀錄撰寫",
+    "category": "社工服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是資深社工師，擅長撰寫結構化的個案會談紀錄"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "今天與個案D-012的兒子進行家庭會談。兒子表示工作壓力大，獨自照顧父親感到疲憊，考慮是否讓父親住進機構。但又擔心父親不適應、其他手足會有意見。父親本人表示不想離開家。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫一份專業的個案會談紀錄，包含：會談基本資訊、會談目的、主要議題摘要、家屬情緒狀態觀察、社工介入與回應、共識與後續計畫、下次會談安排。語氣客觀專業。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "志工招募公告文案",
+    "category": "社工服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是受恩的志工管理員，擅長撰寫溫暖有感染力的招募文案"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩日照中心需要招募長期陪伴志工，每週至少服務4小時。工作內容包括陪長輩聊天、協助活動帶領、陪同就醫等。提供志工時數證明、意外保險、餐點，每季辦志工聯誼。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫一則志工招募公告，包含FB貼文版（200字+emoji）和正式版（條列清楚）。強調「你的陪伴就是最好的良藥」的溫暖感，說明服務內容、時間、福利、報名方式。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "個案轉銜服務計畫",
+    "category": "社工服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是長照個案管理師，專精跨機構轉銜服務協調"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "個案E-005，82歲女性，原在受恩日照中心接受服務2年。因中風住院治療後，功能退化需改為住宿式照護。家屬希望轉至護理之家，但個案情緒低落不願意。目前有鼻胃管、需協助翻身。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請制定一份個案轉銜服務計畫：轉銜評估摘要、轉銜前準備（2週→1週→當日）、照護資訊交接表、個案與家屬心理支持計畫、轉銜後追蹤（3天→2週→1月）。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "社區宣導活動企劃",
+    "category": "社工服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是社區服務推廣專員，擅長設計吸引社區居民參與的活動"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩想在社區舉辦一場「認識失智症」的宣導活動，目標對象是社區65歲以上長者和家屬。場地在里活動中心（約30坪），預算5000元，時間約2小時。希望參加人數50人以上。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計一場社區宣導活動企劃，包含：活動主題與標語、完整流程表（2小時）、宣傳方式（里長廣播稿+海報文案）、互動環節設計、失智症篩檢量表說明、轉介受恩服務的導流設計。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "跨專業團隊會議紀錄",
+    "category": "社工服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是跨專業團隊的會議記錄員，熟悉各專業的術語和角色分工"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "今天跨專業團隊會議討論個案F-008：物理治療師報告個案下肢肌力從3分進步到4分，建議增加站立訓練。營養師提出個案BMI偏低（17.5），建議增加蛋白質攝取。社工反映家屬經濟壓力大，詢問營養補充品的補助管道。護理師提到個案近期情緒低落，建議轉介心理師。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請整理成正式的跨專業團隊會議紀錄，包含各專業的評估摘要、討論重點、整合性照護建議、各專業的行動項目（含負責人和期限）、下次追蹤重點。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "家屬支持團體活動設計",
+    "category": "社工服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是家庭照顧者支持服務專家，具備社工師背景"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩要開辦失智症家屬支持團體，封閉式10-12人，共8次聚會，每月2次週六上午。家屬普遍的困境：照顧壓力大、不知如何溝通、感到孤立無援、與其他家人對照顧方式有歧見。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請規劃一套完整的家屬支持團體方案：8次聚會的主題排程、第一次聚會的詳細教案（含破冰活動、引導討論題綱）、帶領者注意事項、成效評估方式。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "個案權益申訴處理",
+    "category": "社工服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是長照機構的權益保障專員，熟悉長照服務法與老人福利法"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "一位個案的家屬投訴：媽媽在日照中心的私人物品（一條金項鍊）不見了，懷疑是被其他長輩或工作人員拿走。家屬情緒激動，表示要報警。主任已安撫家屬並承諾調查。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫一份申訴處理報告，包含：申訴受理紀錄（時間、人、事）、事實調查步驟、初步回應話術（安撫家屬）、調查結果報告模板、改善預防措施、後續追蹤計畫。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "服務滿意度調查設計",
+    "category": "社工服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是服務品質管理專家，擅長設計能找出真正問題的問卷"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩日照中心要做半年度的家屬滿意度調查，目前服務的家屬約200位。過去調查問卷太簡單（只有整體滿意度1題），無法找出具體改善方向。希望新問卷能在5分鐘內填完。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計一份家屬滿意度調查問卷：15-20題，涵蓋照護品質、環境安全、溝通回應、活動設計、餐飲滿意度。使用1-5分量表+2題開放式問題。附上問卷說明文、數據分析架構。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "社工督導紀錄撰寫",
+    "category": "社工服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是社工督導，擅長用引導式方式協助社工反思實務"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "今天督導新進社工小林，她到職3個月，反映在跟失智個案家屬溝通時感到很挫折——家屬常否認個案退化、拒絕接受建議的服務。小林說自己說了很多但家屬都不聽，不知道該怎麼辦。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫一份社工督導紀錄，包含：督導日期與方式、被督導者反映的議題、督導者的引導與回饋（具體溝通技巧建議）、行動計畫、下次督導追蹤重點。展現支持性督導的風格。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "政策法規白話翻譯",
+    "category": "社工服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是熟悉長照法規的法律顧問，擅長將法條翻譯成第一線工作人員看得懂的白話文"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "衛福部修正了「居家式長照服務提供單位設立標準」第12條：居家服務提供單位應置服務督導員，每服務三十人應置一人，未滿三十人者以三十人計。我們目前服務85位居家個案，有2位督導。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請幫我：1.白話翻譯這條法規（讓照服員也能理解）2.分析我們目前是否符合規定 3.如果不符合需做什麼調整 4.整理成一頁A4的內部公告。語氣平易近人。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "個案危機處理SOP",
+    "category": "社工服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是長照機構的危機管理專家，熟悉各類緊急事件的處理流程"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩需要建立一套完整的個案危機處理SOP，涵蓋：個案走失、跌倒骨折、突發疾病送醫、家暴通報、自殺風險、傳染病群聚等情境。目前各類事件的處理方式不統一，有些靠個人經驗處理。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請建立一套個案危機處理SOP，包含：危機分級制度（Level 1-4）、各類危機的處理流程圖、第一時間應對步驟、通報流程與時限、後續追蹤機制、事件紀錄表格式。每個流程要具體可執行。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "衛教文章撰寫",
+    "category": "社工服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是有護理背景的衛教文章撰稿人，擅長把醫學知識轉化成長輩和家屬看得懂的白話文"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "夏天快到了，日照中心需要一篇衛教文章張貼在佈告欄，主題是「長輩夏季防中暑」。對象是65歲以上長輩和家屬，普遍有慢性病（高血壓、糖尿病），有些正在服用利尿劑。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫一篇衛教文章：標題要吸引人（不要太嚴肅）、分3段（為什麼危險/怎麼預防/怎麼急救）、加3-5個實用口訣、500字內（佈告欄能張貼）、語氣像鄰居阿姨在關心你。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "社區資源手冊編輯",
+    "category": "社工服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是社區資源整合專家，熟悉高雄市各項長照與社福資源"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩想編輯一本「長照家庭資源手冊」給家屬參考。需涵蓋：長照2.0服務項目、各區輔具中心、喘息服務、交通接送、送餐服務、日照中心、居家護理所、家庭照顧者支持據點等。以高雄市三民區為主。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請幫我規劃這本資源手冊的架構和內容大綱，包含：手冊章節設計、每章節涵蓋的資源類型、資訊呈現格式建議（讓長輩也看得懂）、索引方式、QR Code應用建議。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "家屬節日問候信",
+    "category": "社工服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是長照機構的溫暖文案寫手，擅長在節慶時傳遞機構的關懷"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "中秋節快到了，受恩要寄賀卡給日照中心所有個案的家屬（約200戶）。今年日照中心帶長輩做了手工月餅，每位長輩會帶一盒回家。希望卡片溫馨但不制式。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請寫5個不同版本的中秋賀卡文案：A.正式溫馨版 B.口語親切版 C.感恩版 D.趣味版 E.簡短LINE版（50字內）。每版80字內，要提到月餅/團圓意象，結尾都要有機構署名。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "SOAP護理紀錄撰寫",
+    "category": "護理照護",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是資深居家護理師，擁有10年長照個案管理經驗，精通SOAP格式的護理記錄"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "今天訪視個案A-032，82歲女性，高血壓及輕度失智。血壓158/92（上週145/88升高），個案反映常忘記吃降血壓藥。女兒說上週跌倒一次但無外傷。目前用藥：降血壓藥每日一次、失智症用藥每日一次。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請用SOAP格式撰寫本次訪視紀錄：S（主觀資料）、O（客觀資料）、A（評估與風險判斷）、P（計畫與後續處置）。約300字，專業客觀，特別標註跌倒風險評估。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "照護交班摘要",
+    "category": "護理照護",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是有8年日照中心經驗的護理師，擅長用精簡有條理的方式撰寫交班紀錄"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "今天日班（07:00-15:00）：王伯伯(B-015)午餐嗆咳兩次已調整為剪碎食物、李奶奶(B-023)血糖飯前210已通知家屬明天帶回診、新入住陳爺爺(B-041)第一天情緒低落不太說話喜歡看報紙、下午團體卡拉OK出席22人、空調下午2點故障已叫修預計明早修復先開電扇。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫日班交夜班的交班摘要：1.異常事件優先 2.個別長輩注意事項 3.新住民提醒 4.環境設備異常 5.明日需跟進事項。格式簡潔條列式，夜班同仁30秒能掌握重點。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "個案照護計畫撰寫",
+    "category": "護理照護",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是長照機構照護管理師，熟悉衛福部照護計畫撰寫規範"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "住民張奶奶，85歲，糖尿病+輕度失智+右膝退化性關節炎。ADL部分依賴（進食獨立、移位需協助、如廁需提醒、洗澡需全協助）。血糖控制不穩（飯前常超過200），女兒每週日探視一次。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫完整照護計畫：問題清單（依優先順序）、短期目標（1月內）與長期目標（3月內，符合SMART原則）、照護措施與負責人員、評值指標與方法。用表格呈現問題-目標-措施-評值。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "跌倒風險評估表",
+    "category": "護理照護",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是長照機構的護理評估專家，熟悉跌倒風險評估工具與預防策略"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "住民陳爺爺，78歲，帕金森氏症+高血壓，服用安眠藥與降壓藥。使用四腳拐行走、步態不穩、起身需協助、夜間如廁頻率高（每晚3-4次）。去年10月曾跌倒一次（浴室），床位靠窗側。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請產出完整的跌倒風險評估表：內在因子評估（年齡、疾病、用藥、認知、平衡感）、外在因子（環境、輔具、衣著）、風險等級判定、預防介入措施（環境/個人/運動/用藥）、跌倒應變處理流程。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "壓瘡護理方案",
+    "category": "護理照護",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是傷口照護專科護理師，精通壓瘡分級與照護標準"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "住民陳奶奶，90歲，長期臥床意識清楚。薦骨部位第二級壓瘡（部分皮層缺損），傷口3x2cm、淺層潰瘍、傷口床粉紅色、少量滲液無異味。目前每2小時翻身、使用氣墊床、每日換藥一次。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請產出壓瘡分級護理方案：傷口評估紀錄（NPUAP分級）、護理目標、傷口處置（清潔方式、敷料選擇及理由）、全人照護（翻身計畫表、營養補充、皮膚保護）、監測與評值（PUSH Tool追蹤）。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "用藥安全管理紀錄",
+    "category": "護理照護",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是長照機構藥事管理顧問，熟悉給藥安全與異常事件處理"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "住民王伯伯的家屬今天送來新的處方，回診後醫師調整了降血壓藥劑量（從一顆改為半顆），並新增一種抗凝血劑。但處方箋上的劑量跟藥袋上的標示不一致。另外，隔壁床的李阿姨今早拒絕吃藥，說藥太苦了。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請產出：1.用藥變更處理SOP（含三讀五對流程）2.處方疑義時的通報與確認步驟 3.拒藥處理流程與話術 4.用藥異常事件通報單格式。確保內容符合相關法規與評鑑要求。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "生命徵象異常通報",
+    "category": "護理照護",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是護理站的值班護理師，需要快速判斷異常並決定處置方式"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "下午3點例行測量時發現住民趙爺爺（80歲，冠心病史）血壓突然從平時的130/80升高到180/110，心跳102次/分，呼吸20次/分，體溫36.8°C。個案自述胸口有點悶，但沒有劇烈疼痛。目前意識清楚。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請產出：1.異常生命徵象的即時處置步驟 2.通報流程（通知誰、多久內、用什麼方式）3.需記錄的觀察項目 4.送醫判斷標準 5.護理紀錄範例。條理清楚，讓新進護理師也能照做。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "感染控制措施方案",
+    "category": "護理照護",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是長照機構感染控制專家，具備ICP資格，熟悉疾管署長照機構感控指引"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩住宿機構（60床）最近有3位住民出現上呼吸道症狀（咳嗽、流鼻水），1位確診流感。住民多為80歲以上、免疫力低下。目前是秋冬流感季，工作人員有2位也感到身體不適。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請制定緊急感染控制方案：1.群聚感染判定與通報 2.隔離措施（個案隔離、分區照護）3.環境消毒SOP 4.工作人員健康監測 5.訪客管制措施 6.家屬通知信範本。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "營養評估與建議",
+    "category": "護理照護",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是長照機構的營養師，擅長為高齡者設計營養照護計畫"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "住民林奶奶，88歲，BMI 17.2（過輕），近3個月體重下降2.5公斤。目前可自行進食但速度慢、食量減少約1/3。有輕度吞嚥困難（喝水偶爾嗆咳），喜歡甜食不愛蔬菜。糖尿病（口服藥控制），牙齒狀況不佳（僅剩6顆）。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請產出完整營養評估與照護建議：MNA篩檢結果分析、每日熱量與蛋白質需求計算、一日三餐菜單範例（考量吞嚥困難和糖尿病）、質地調整建議、營養補充品建議、監測追蹤指標。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "疼痛評估紀錄",
+    "category": "護理照護",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是疼痛管理護理師，熟悉高齡者的疼痛評估工具與非藥物介入"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "住民周伯伯，75歲，脊椎退化性關節炎，長期腰背疼痛。使用VAS量表自評疼痛程度為6分（中度），早上起床和久坐後最痛。目前使用止痛貼片+口服止痛藥，但他覺得效果越來越差，要求加藥。夜間因痛醒2-3次。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請產出疼痛評估紀錄與照護方案：多面向疼痛評估（位置、性質、強度、時間模式）、疼痛對日常生活的影響、目前用藥效果評估、非藥物疼痛管理策略（至少5種）、與醫師溝通建議、追蹤評估計畫。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "住民入住評估報告",
+    "category": "護理照護",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是長照機構入住評估護理師，需要全面評估新住民的照護需求"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "申請入住者林先生，82歲男性，由女兒申請。中風後右側偏癱、鼻胃管灌食、需抽痰、意識清楚但語言表達困難。翻身需全協助、移位需兩人協助、大小便失禁使用尿布。女兒希望有復健服務和定期回診接送。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫完整入住評估報告：基本資料彙整、ADL評估（Barthel Index）、醫療照護需求（管路、用藥、復健）、心理社會評估、照護等級建議、初步照護計畫方向、家屬溝通紀錄。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "護理品質指標月報",
+    "category": "護理照護",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是長照機構品質管理專員，擅長用數據分析護理品質趨勢"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "本月品質指標：跌倒發生率2.1%（上月1.8%）、壓瘡新發生率0%、非計畫性體重下降率4.3%、感染發生率3.2%（流感群聚）、約束使用率8.7%。特殊事件：1位住民因肺炎住院、新增2位住民。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫護理品質指標月報：各指標數據分析（含趨勢比較）、異常指標根因分析（魚骨圖）、改善對策、上月改善計畫追蹤結果、下月工作重點。以專業品管報告格式呈現。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "約束使用評估紀錄",
+    "category": "護理照護",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是護理倫理顧問，熟悉約束使用的法規規範與倫理考量"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "住民張奶奶，82歲，中度失智，近期夜間頻繁自行拔除鼻胃管（本週已發生3次），護理師每次都要重新放置。家屬同意使用手套型約束，但機構規定需完成正式評估。目前夜班僅2位照服員，無法一對一看護。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請產出完整的約束使用評估紀錄：約束必要性評估、替代方案嘗試紀錄（至少列5種替代方案）、約束類型選擇與理由、家屬告知同意流程、約束執行計畫（含監測頻率）、定期重新評估時間表。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "管路照護紀錄",
+    "category": "護理照護",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是管路照護專家，熟悉各類管路的照護標準與異常處理"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "住民王伯伯有鼻胃管（置放3週）和尿管（長期留置）。今天發現鼻胃管固定處皮膚發紅、尿管引流袋尿液顏色偏深混濁。灌食時個案有咳嗽反應。體溫37.8°C，其他生命徵象正常。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請產出管路照護紀錄與處置方案：各管路狀態評估、異常問題處理步驟、感染風險判斷、護理師應立即執行的措施、需通報醫師的項目、管路照護標準SOP複習重點。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "臨終照護計畫",
+    "category": "護理照護",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是安寧緩和照護護理師，擅長以全人照護理念陪伴臨終住民和家屬"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "住民劉奶奶，92歲，末期心臟衰竭，醫師評估存活期約1-3個月。目前呼吸喘但意識清楚，已簽署DNR。女兒和兒子對於是否繼續積極治療意見不同。劉奶奶曾表示「不要插管，讓我舒服地走」。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請制定臨終照護計畫：症狀控制（呼吸喘、疼痛、焦慮）、舒適護理措施、心理靈性照護、家屬哀傷準備與支持、家屬意見分歧的溝通建議、善終環境佈置、後事準備指引。語氣溫暖尊重。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "護理衛教單張設計",
+    "category": "護理照護",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是護理衛教設計專家，擅長製作讓家屬一看就懂的衛教內容"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩需要製作一份給家屬的衛教單張，主題是「居家照顧臥床長輩的翻身技巧」。對象是沒有醫療背景的家屬，很多是60歲以上的配偶照顧者。需要簡單、步驟清楚、最好有圖解提示。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計衛教單張內容：標題要親切、翻身的重要性（2-3句白話文）、翻身步驟（分解為5-6步，每步一句話+動作要點）、翻身時間表建議、常見錯誤提醒、什麼時候需要求助的警示、緊急聯絡電話。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "復健訓練紀錄",
+    "category": "護理照護",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是物理治療師，專精高齡者的功能訓練與復健計畫"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "住民張伯伯，70歲，中風後3個月，右側偏癱。目前可在輔具協助下站立30秒、坐到站需大量協助、右手可抬起至肩膀高度但無法握物。治療師評估其有進步潛力，家屬期待能恢復到可以自行走路。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫復健訓練紀錄與計畫：功能評估現況、短期目標（4週）與長期目標（12週）、每週訓練計畫（含動作描述、頻率、強度）、居家練習指導（家屬可協助的動作）、進步追蹤指標。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "急救處理紀錄",
+    "category": "護理照護",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是急救訓練講師，熟悉長照機構的緊急醫療處理程序"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "今天上午10:30，住民趙奶奶（85歲，心臟病史）在活動室突然臉色蒼白、冒冷汗、胸口疼痛、血壓90/60。值班護理師小王立即到場處理。已撥打119，救護車預計8分鐘到達。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請產出：1.急救處理紀錄（時間軸記錄每個處置步驟）2.到院前應準備的資料清單 3.通知家屬的話術 4.事後需完成的文件 5.類似事件的預防檢討。格式清楚，作為教育訓練教材。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "護理師交接班報告",
+    "category": "護理照護",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是護理主管，負責建立標準化的交接班制度"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩目前護理交班方式不統一，有的用口頭、有的寫在筆記本、有的用LINE群組，常常遺漏重要資訊。護理站有20位住民，護理師3班輪值（日/小夜/大夜）。最近因交班不確實導致用藥延遲1次。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計一套標準化的護理交接班制度：交班報告格式（SBAR架構）、交班流程SOP（時間、地點、參加者、步驟）、交班資訊優先順序（什麼一定要說、什麼可以看紀錄）、交班紀錄表格式、新人交班訓練要點。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "公文格式轉換",
+    "category": "行政後勤",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是政府公文格式專家，熟悉台灣行政機關公文撰寫規範"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "社會局來函要求我們提報明年度的社區關懷據點服務計畫和經費概算。我們計劃服務400位長者，辦理48場健康促進活動，需要補助款120萬。計畫書和預算表已附在附件。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請轉換成正式公文格式（受文者、主旨、說明、辦法），主旨一句話30字內，說明分項列點，使用正確敬語（鈞局、敬請、惠予），附件列表完整。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "經費核銷報告",
+    "category": "行政後勤",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是長照機構的會計專員，熟悉政府補助款的核銷規範"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩今年獲得社會局補助「社區照顧關懷據點」計畫經費80萬元。已執行完畢，需要撰寫核銷報告。主要支出：講師費15萬、材料費10萬、人事費30萬、行政管理費8萬、活動費12萬、雜支5萬。所有收據和發票都已整理完成。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫經費核銷報告：計畫執行摘要、經費支出明細表（依科目分列）、經費使用說明（每筆支出的依據）、結餘或超支說明、附件清單（收據、簽到表、照片等）。格式符合政府補助核銷要求。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "員工出勤管理辦法",
+    "category": "行政後勤",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是人力資源專員，熟悉台灣勞基法與長照機構排班特殊規定"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩有60位員工（護理師、照服員、社工、行政），24小時排班制，護理和照服員需輪值日班/小夜/大夜。目前出勤紀錄用紙本簽到，常有爭議（打卡時間不清楚、代簽等問題）。需建立規範化的出勤管理辦法。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫員工出勤管理辦法：出勤規定（上下班時間、打卡方式）、遲到早退定義與處理、請假類別與流程、加班申請與補休規定、排班原則（符合勞基法）、違規處理。特別注意長照業的特殊排班需求。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "會議通知與議程安排",
+    "category": "行政後勤",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是行政管理專員，擅長撰寫清晰有效的會議通知"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩下週要召開「年度評鑑準備動員會議」，時間：週三14:00-16:00，地點：3樓會議室。出席：全體主管+各部門代表。議題：評鑑時程確認、各部門準備進度、文件整備分工、模擬評鑑安排。需在會前3天發出通知。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請產出：1.正式會議通知信（Email格式，含議程表）2.詳細議程表（含時間分配、報告人）3.會議記錄模板（含決議事項和行動項目欄）4.會前提醒信範本。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "採購比價分析報告",
+    "category": "行政後勤",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是採購管理專員，擅長供應商比較分析與決策建議"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩需要採購20張電動護理床，預算每張3-5萬。已詢價3家廠商：A廠45000含3年保固、B廠38000含1年保固+配件另購、C廠42000含2年保固+免費安裝。需在下週主管會議提出建議。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫採購比價分析報告：供應商基本資料對照、價格比較（含隱藏成本）、多維度評分表（價格/品質/服務/保固/交期，加權計分）、3年TCO分析、推薦方案與理由、議價建議。用表格呈現。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "政府補助計畫申請書",
+    "category": "行政後勤",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是政府計畫撰寫專家，熟悉社會福利補助計畫的申請格式"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩要向衛福部申請「長照機構服務品質提升計畫」補助，預計申請200萬元，期程1年。計畫重點：導入AI輔助照護記錄系統、建置智慧環境監測設備、辦理員工數位能力培訓。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫補助計畫申請書：計畫摘要、計畫緣起（問題分析）、計畫目標（量化）、執行策略與方法、期程規劃（甘特圖式）、經費需求（分項明細）、預期效益（KPI）、永續經營規劃。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "年度預算編列",
+    "category": "行政後勤",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是長照機構的財務規劃專員，熟悉社福機構的預算編列邏輯"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩明年度需要編列預算。去年總支出約3500萬（人事費60%、業務費25%、設備費10%、行政費5%）。明年計畫：增聘3位照服員（月薪各32000）、更新消防設備（預估50萬）、擴大日照服務量（增加20位）。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請協助編列年度預算：依科目分列（人事費、業務費、設備費、行政費）、各項說明與計算依據、與去年比較（增減分析）、月度現金流預估、預備金規劃、預算控制建議。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "合約管理與到期提醒",
+    "category": "行政後勤",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是合約管理專員，擅長追蹤合約時程確保機構權益"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩目前有12份進行中的合約：房屋租賃（明年3月到期）、清潔外包（6月到期）、餐飲供應商（年度合約自動續約）、醫療廢棄物處理（9月到期）、電梯保養（每年續簽）等。目前沒有統一的合約管理方式，常漏掉續約時間。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請建立合約管理制度：合約登記表格式（含關鍵日期）、到期前提醒機制（提前多久、通知誰）、續約評估檢核表、合約歸檔規範、每月合約狀態報表。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "資產盤點清單",
+    "category": "行政後勤",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是資產管理專家，擅長建立系統化的盤點機制"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩的固定資產包括：護理床60張、輪椅30台、電動代步車5台、電腦15台、冷氣機20台、洗衣機5台等。去年盤點發現有3項資產帳物不符（2台輪椅找不到、1台電腦已報廢但未除帳）。今年需在6月底前完成盤點。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請產出完整的資產盤點文件：盤點計畫書（目的、時程、分工）、資產盤點清單模板（含欄位設計）、盤點作業SOP、差異處理流程、資產報廢申請單、盤點結果報告模板。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "志工管理辦法",
+    "category": "行政後勤",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是志願服務管理專員，熟悉志願服務法與志工管理實務"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩目前有35位志工，分為陪伴志工、活動志工、行政志工三類。現況問題：出席率只有60%、新志工3個月內流失率高、缺乏統一的訓練制度、志工時數認證不確實。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫志工管理辦法：志工分類與任務、招募流程、訓練計畫（基礎+特殊）、排班與出勤管理、獎勵與激勵機制、志工保險、退出機制、時數認證流程、年度考核方式。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "檔案歸檔管理制度",
+    "category": "行政後勤",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是文件管理專家，熟悉長照機構的文件保存規範"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩的文件管理很混亂：個案紀錄散在不同資料夾、評鑑用的文件找不到歷史版本、電子檔和紙本沒有對應、機密文件（個資）沒有分級管理。下次評鑑委員一定會看文件管理。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請建立文件歸檔管理制度：文件分類架構（依部門和性質）、檔案命名規則、紙本與電子檔歸檔流程、保存年限規定（各類文件）、機密文件分級管理、定期檢查機制、銷毀流程。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "環境安全檢查表",
+    "category": "行政後勤",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是職業安全衛生管理師，熟悉長照機構的環境安全標準"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩住宿機構需要每月進行環境安全檢查，範圍包括住房區、公共區域、浴廁、廚房、醫療區、機電室。上次消防稽查被指出：滅火器有2支過期、一處逃生門前堆放物品、緊急照明燈1盞不亮。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請產出完整的環境安全檢查文件：分區檢查表（消防/電氣/一般環境/衛生，每項含檢查標準和結果欄）、不合格追蹤表、法規對照、年度檢查排程、緊急改善通報流程。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "差旅費申請與核銷",
+    "category": "行政後勤",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是行政助理，熟悉機構差旅管理制度"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩的主任下週要到台北參加衛福部舉辦的「長照機構評鑑說明會」，2天1夜。需要搭高鐵來回（高雄-台北）、住宿一晚、當地交通。機構規定需事先申請差旅費預支，回來後5天內核銷。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請產出：1.差旅費預支申請書（含行程規劃、費用明細預估）2.差旅費核銷報告範本（含實支明細、差異說明）3.應附單據清單 4.差旅政策提醒事項。格式正式，可直接使用。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "人事資料管理規範",
+    "category": "行政後勤",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是人事管理專員，熟悉個資法與勞動法規"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩有60位員工，人事資料目前放在Excel和紙本檔案中。有些資料不完整（緊急聯絡人沒更新、證照到期沒追蹤）、有些資料保存太久（離職員工資料留了10年沒銷毀）。需要建立規範化的人事資料管理制度。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫人事資料管理規範：應建檔的資料項目清單、資料更新頻率與方式、證照到期追蹤機制、離職員工資料保存與銷毀規則、個資保護措施、權限管理（誰可以看什麼資料）、數位化建議。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "緊急應變聯絡清冊",
+    "category": "行政後勤",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是機構風險管理專家，擅長建立緊急應變體系"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩住宿機構60床，24小時營運。需建立一份完整的緊急應變聯絡清冊，涵蓋：火災、地震、颱風、停電、水管破裂、住民突發疾病、走失、群聚感染等情境。目前夜班僅有2位照服員+1位護理師值班。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請產出緊急應變聯絡清冊與計畫：內部聯絡清冊模板（應變團隊、各班負責人）、外部聯絡清冊（119/110、最近醫院、消防隊、水電搶修）、各類緊急事件的處理SOP、夜間值班應變流程、年度演練計畫。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "請假與排班管理",
+    "category": "行政後勤",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是人資專員，熟悉長照機構的特殊排班需求與勞基法"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩照服員排班常有問題：人力不足時臨時調班、有人常請假但找不到代班、排班不公平（某些人常上大夜班）、加班時數超過法規上限但不知道怎麼算。員工抱怨很多，主管也頭痛。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請建立排班與請假管理制度：排班原則（公平、符合勞基法）、各類假別說明（含長照業特殊規定）、請假流程與代班機制、加班管理與補休規定、排班表格式、每月排班檢核清單。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "行政月報撰寫",
+    "category": "行政後勤",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是行政主管，需要每月向院長報告行政事務執行狀況"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "本月行政事項：完成消防設備年度檢查、採購新電腦5台（總額12萬）、2位新進員工報到（照服員）、1位員工離職（行政助理）、完成年度保險續保、處理家屬投訴1件（已結案）、停車場修繕完工。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫行政月報：本月重點事項摘要（3個大數字）、各類行政事務執行狀況（人事/總務/財務/安全）、待辦事項追蹤、下月重點工作、需要院長決策的事項。簡潔有條理，1-2頁以內。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "員工福利制度說明",
+    "category": "行政後勤",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是人力資源管理師，擅長設計有競爭力的員工福利制度"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩想改善員工福利以降低離職率（目前年離職率25%，照服員最高達35%）。目前福利：勞健保、年終1個月、員工旅遊、生日禮金500元。預算有限，但希望能設計一些不花大錢但讓員工有感的福利措施。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計員工福利制度改善方案：現有福利盤點、建議新增的福利項目（分為低成本/中成本/高成本）、各福利的預估費用與預期效果、實施優先順序、員工溝通方式、成效追蹤指標。特別針對照服員設計留才措施。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "訪客管理與接待SOP",
+    "category": "行政後勤",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是行政管理專員，需要建立專業的訪客接待制度"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩每天都有不同類型的訪客：家屬探視、新個案家屬參觀、政府稽查人員、廠商、志工、實習生等。目前沒有統一的接待流程，有時候訪客直接進住房區沒人接待，評鑑委員也曾評論訪客管理不夠嚴謹。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請建立訪客管理與接待SOP：訪客分類與接待規格、預約登記流程、門禁管理（訪客證）、各類訪客的接待動線、住房區探視規定、感染期間的訪客管制、政府稽查的特別接待流程、訪客登記表格式。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "標準作業流程SOP撰寫",
+    "category": "行政後勤",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是流程管理顧問，專精ISO品質管理系統與SOP文件撰寫"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩需要為「新住民入住作業」撰寫SOP。目前各部門各做各的，沒有統一流程，常發生漏做的情況（如：入住前未完成環境消毒、未建立個案資料、未通知營養師調整膳食）。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫「新住民入住作業SOP」：文件管理資訊、目的與適用範圍、權責劃分、完整作業流程（入住前→入住當天→入住後一週，含各步驟負責人和時限）、異常處理、使用表單清單。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "季度主題活動教案",
+    "category": "活動設計",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是銀髮族活動設計師，有職能治療背景，擅長設計安全又有趣的長輩活動"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩日照中心需要一份端午節主題活動教案。對象約25位長輩（輕度15人、中度8人、重度2人），時間90分鐘，場地約30坪活動室，預算2000元。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計完整活動教案：活動名稱（有趣好記）、活動目標（認知/體能/社交各一）、詳細流程時間表（每10-15分鐘一段）、材料清單及預估費用、各認知程度調整建議（重度長輩怎麼參與）、安全注意事項、活動後評量方式。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "認知訓練教案設計",
+    "category": "活動設計",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是認知訓練專家，熟悉各類認知刺激活動的設計原則"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩日照中心要辦一系列認知訓練活動，對象是輕度至中度失智長輩約15人。目標是延緩認知退化、增加自信心。每次60分鐘，每週2次，規劃一個月（共8次）。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計一個月的認知訓練教案：8次活動的主題排程（涵蓋記憶、注意力、語言、執行功能等面向）、每次的詳細流程、教具準備清單、難度分級設計、進步追蹤方式。第一次課程請提供完整教案。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "音樂治療活動設計",
+    "category": "活動設計",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是音樂治療師，擅長用音樂活動促進長輩的身心健康"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩想在日照中心開辦每週一次的「音樂時光」活動，約20位長輩參加（含5位失智）。長輩普遍喜歡台語老歌和日本演歌。機構有電子琴、手鼓、響板等簡單樂器。每次50分鐘。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計音樂治療活動方案：一個月4次的主題規劃、第一次課的完整教案（含選曲、活動流程、樂器使用）、如何引導不願參與的長輩、失智長輩的特別引導技巧、活動帶領者需注意的事項。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "手作藝術活動教案",
+    "category": "活動設計",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是銀髮族手作教學老師，擅長設計簡單但有成就感的手作活動"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "中秋節快到了，受恩想帶長輩做手作月餅（用黏土或輕質土做裝飾用月餅，不是真的食品）。參加者約20位長輩，多數可以自己動手但精細動作較差。時間60分鐘，預算1000元。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計手作月餅活動教案：材料清單與預估費用、步驟分解（要非常簡單，6-8步）、每步的引導話術、作品完成後的分享環節設計、如何協助手部功能較差的長輩、成品可以帶回家送給家人的包裝建議。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "體適能運動教案",
+    "category": "活動設計",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是銀髮族體適能教練，熟悉高齡者安全運動的原則與禁忌"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩日照中心要開辦每週3次的「晨間活力操」，每次30分鐘。參加者約25位長輩，年齡75-92歲，多數可站立但有些需坐輪椅。有些長輩有高血壓、糖尿病、膝蓋退化等問題。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計晨間活力操教案：一週3天的不同運動主題、每次30分鐘的動作流程（暖身→主運動→緩和）、每個動作的口令語（簡單有趣）、坐式替代動作（輪椅長輩用）、運動安全注意事項、不適合運動的判斷標準。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "園藝治療活動設計",
+    "category": "活動設計",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是園藝治療師，擅長運用植物和園藝活動促進高齡者身心健康"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩有一個小型戶外花園（約10坪），想利用這個空間開辦園藝治療活動。對象是日照中心長輩15人，每週1次90分鐘。多數長輩過去有務農或種花的經驗。需要考慮長輩體力和安全（不能久蹲、避免蚊蟲）。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計園藝治療活動方案：一季12次的活動排程（配合季節種什麼）、第一次課的完整教案、適合長輩操作的園藝活動類型、安全措施（防曬防蚊防跌）、花園空間配置建議（輪椅可進入的高架花圃）、活動治療目標對應。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "懷舊治療活動設計",
+    "category": "活動設計",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是懷舊治療專家，擅長用舊時記憶引導長輩進行回顧與分享"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩日照中心的長輩多數是1935-1950年出生，經歷過日治時期、光復、經濟起飛。很多是客家或閩南背景。想透過懷舊治療活動刺激記憶、促進社交互動。每次60分鐘，約12位長輩參加。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計懷舊治療活動教案：一個月4次的主題（如：小時候的零嘴、以前的學校、家鄉的味道、老歌老電影）、第一次課的完整引導稿（含引導問句、分享規則）、需準備的懷舊素材、如何處理長輩的負面情緒回憶、失智長輩的參與調整。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "感官刺激活動設計",
+    "category": "活動設計",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是職能治療師，專精為中重度失智長輩設計多感官刺激活動"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩有8位中重度失智長輩需要特別的活動設計，他們多數無法參與一般團體活動。能力描述：部分可跟隨簡單指令、對音樂和觸覺刺激有反應、注意力約5-10分鐘。每次活動30-40分鐘。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計多感官刺激活動方案：視覺/聽覺/觸覺/嗅覺/味覺各面向的活動設計、一週5天的感官活動排程、每次活動的詳細流程、感官教具DIY方法（低成本）、活動帶領者與住民的比例建議、反應觀察紀錄表。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "代間活動設計",
+    "category": "活動設計",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是代間活動設計專家，擅長促進老幼共融的互動活動"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩與隔壁的幼兒園談好合作，每月一次「爺爺奶奶與小朋友」的代間活動。小朋友約15人（5-6歲），長輩約15人（輕度為主）。時間90分鐘。雙方都很期待但也擔心安全問題。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計一個學期（6次）的代間活動方案：6次活動主題（如：一起說故事、一起做手作、教小朋友台語等）、第一次活動的完整教案、安全注意事項、破冰環節設計、分組方式（老幼配對）、家長和幼兒園老師的配合事項。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "戶外郊遊企劃",
+    "category": "活動設計",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是銀髮族旅遊規劃師，專精設計無障礙的長輩出遊行程"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩日照中心想帶長輩到高雄蓮池潭半日遊，約20位長輩（含5位坐輪椅）+10位工作人員。交通用遊覽車，時間上午8:30-12:00。需要考慮：無障礙動線、如廁、用藥時間、體力負荷、天氣（夏天很熱）。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計戶外郊遊企劃：行程規劃（每半小時一段）、無障礙動線確認清單、隨行醫療箱必備物品、人員分組與責任分工、緊急應變計畫、天氣備案、費用概算、行前通知家屬信件範本。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "節慶佈置規劃",
+    "category": "活動設計",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是節慶活動佈置設計師，擅長用低預算創造溫馨的節慶氛圍"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "農曆新年快到了，受恩日照中心想佈置出年節氣氛。空間包括大廳、走廊、活動室、餐廳。預算3000元。希望長輩也能參與佈置過程（當作活動的一部分）。注意事項：不能有易燃物、不能掛太高、要牢固不會掉。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計節慶佈置規劃：各區域佈置重點、長輩可以參與的DIY佈置項目（剪春聯、做燈籠等）、材料採購清單（含預算分配）、佈置施工時程、安全注意事項、佈置活動教案（2小時）、拆除時程建議。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "年度活動行事曆",
+    "category": "活動設計",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是銀髮族活動規劃師，有10年日照中心經驗"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩日照中心需要規劃全年度的活動行事曆。要求：每月至少1場主題活動+每週固定活動（體適能3次、認知訓練2次）、配合節慶、活動類型均衡（手作/音樂/運動/認知/社交）、每月預算約3000元。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請規劃完整的年度活動行事曆：12個月的月度主題活動、每週固定活動排程表、各活動類型的佔比（確保均衡）、全年預算總表、每月一個重點活動的簡要教案、備案活動（雨天/人數不足時）。用表格呈現。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "活動成效評估報告",
+    "category": "活動設計",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是活動評估專家，擅長用系統化方法評估活動對長輩的效益"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩本季度共辦了12場主題活動+每週固定活動，平均出席率82%。想做一份成效評估報告呈給主管和評鑑委員。需要展現活動對長輩的正面影響，而不只是辦了幾場活動。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計活動成效評估報告：評估架構（過程指標+結果指標）、量化數據呈現（出席率、參與度評分、滿意度）、質化成果描述（個案進步故事2-3則）、活動照片運用建議、待改善項目、下季度優化計畫。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "失智症專屬活動教案",
+    "category": "活動設計",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是失智症非藥物治療專家，精通蒙特梭利失智照護法"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩的失智專區有12位住民，認知程度從輕度到重度都有。目前活動設計比較沒有系統，有時讓失智長輩跟一般長輩一起活動但參與度很低。需要為他們設計專屬的活動方案。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計失智症專屬活動方案：一週活動排程表（涵蓋認知刺激、感官活動、懷舊治療、音樂活動、體適能）、5個不同活動的詳細教案、引導話術範例（適合失智長者的溝通方式）、分級調整建議、BPSD預防與處理、一個月活動行事曆。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "生日慶祝活動設計",
+    "category": "活動設計",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是活動企劃專員，擅長在日常中創造驚喜與溫馨"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩日照中心每月統一為當月壽星慶生，通常有3-5位壽星。目前的做法是唱生日快樂歌+吃蛋糕，但越來越形式化，長輩也覺得無聊。想要讓慶生活動更有溫度和特色。每次30分鐘、預算500元。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請重新設計月度慶生活動：5種不同風格的慶生方案（輪流使用不重複）、每種方案的完整流程、低成本但有巧思的佈置建議、讓非壽星長輩也能參與的互動設計、壽星專屬小驚喜（不花大錢但有感）、生日卡片文案3版。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "季節性健康促進活動",
+    "category": "活動設計",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是健康促進活動設計師，熟悉高齡者的季節性健康風險"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "冬天快到了，受恩需要設計一系列冬季健康促進活動，重點防範：流感、跌倒（穿厚衣服行動不便）、中風（溫差大）、憂鬱（日照時間短）。對象是日照中心30位長輩，預計辦4場，每場60分鐘。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計4場冬季健康促進活動：每場的主題和教學重點、活動流程、互動環節（不是單向衛教）、健康操或暖身運動設計、帶回家的健康小卡設計（簡單的自我檢查清單）、防寒保暖實用技巧。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "志工帶領活動培訓教案",
+    "category": "活動設計",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是志工培訓講師，擅長教導非專業人士帶領簡單的長輩活動"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩有10位活動志工，需要接受帶領活動的基礎訓練。他們有熱忱但沒有專業背景，平均年齡50歲。需要教會他們帶簡單的活動（唱歌、玩遊戲、說故事），以及跟長輩互動的基本技巧。訓練時間3小時。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計3小時的志工培訓教案：培訓目標、課程流程（含實作演練）、長輩互動基本原則（5個do's和5個don'ts）、3個志工可以獨立帶領的簡單活動腳本、突發狀況處理（長輩突然哭了/不參加/起衝突）、培訓後的實習安排。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "家屬聯誼活動企劃",
+    "category": "活動設計",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是家庭活動設計師，擅長促進家屬與長輩的互動連結"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩想辦一場家屬聯誼日，讓家屬來日照中心跟長輩一起參加活動。預計約30位長輩+50位家屬，時間週六上午9:30-12:00（含用餐），場地是日照中心活動室+戶外庭院。目的是增進家屬對機構的信任和參與感。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計家屬聯誼日企劃：活動主題與流程表（2.5小時）、適合老幼三代一起玩的活動（至少3個）、家屬可以體驗照顧者角色的環節、午餐安排、拍照打卡設計、活動後滿意度調查、給未到場家屬的活動紀錄分享方式。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "節慶賀卡文案設計",
+    "category": "活動設計",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是溫馨文案創作者，擅長為長照機構撰寫節慶祝福文字"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩一年需要做5次節慶賀卡（春節、母親節、端午、中秋、聖誕），寄給個案家屬。過去幾年文案都很制式（「祝您佳節愉快」），想要每年有新意但又不失溫暖和專業形象。今年先從母親節開始。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請為母親節設計5個不同版本的賀卡文案：A.正式溫馨版 B.口語親切版 C.感恩版（強調照顧團隊的心意）D.趣味版（帶一點幽默）E.簡短LINE版（50字內）。每版80字內，結尾署名「受恩日照中心 全體同仁敬上」。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "居家訪視紀錄撰寫",
+    "category": "居家服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是資深居家護理師，擅長撰寫結構化的居家訪視紀錄"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "今天到宅訪視個案G-015，78歲獨居男性，糖尿病+輕度失智。發現：家中有過期食物在冰箱、藥盒裡上週的藥沒吃完、客廳地上有電線絆倒風險、血糖機沒電很久沒測。個案說女兒上週有來看他但沒待很久。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫居家訪視紀錄：訪視日期時間、個案基本資訊、健康狀態評估、居家環境觀察（安全風險標記）、用藥遵從性評估、社會支持評估、問題清單與優先處理順序、處置與建議、下次訪視重點。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "居家環境安全評估",
+    "category": "居家服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是居家環境安全評估專家，具備職能治療與輔具評估背景"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "要為個案H-022（80歲女性，髖關節置換術後3週出院）做居家環境安全評估。她住在公寓4樓無電梯，室內為磁磚地板，浴室沒有扶手，門檻高約3公分，床鋪偏低（約40公分），主要照顧者是75歲的先生。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請產出居家環境安全評估報告：各空間別評估（玄關/客廳/臥室/浴廁/廚房/走廊/樓梯）、風險等級標記、改造建議（優先順序排列）、輔具建議清單與費用概估、長照補助申請指引、施工注意事項。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "居家照護計畫擬定",
+    "category": "居家服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是居家照護個案管理師，熟悉長照2.0居家服務的規劃"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "個案I-031，85歲女性，中風後左側偏癱，出院後回家照顧。可坐輪椅但無法自行移位，需協助進食（用湯匙餵食）、需協助洗澡、穿衣需全協助。媳婦為主要照顧者但腰不好，兒子白天上班。經濟狀況中低收入戶。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請擬定完整的居家照護計畫：個案需求評估摘要、照護目標（短期/長期）、建議服務項目與頻率（居家服務/居家護理/居家復能/輔具/喘息服務）、長照額度試算、家屬照顧技巧指導重點、每月費用概估。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "居家服務時程安排",
+    "category": "居家服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是居家服務督導，負責管理15位照服員的排班與路線規劃"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "目前受恩居家服務有85位個案、15位照服員。問題：有些照服員路線不順（跑很遠）、某些時段（早上8-10點）個案需求集中排不開、臨時請假找不到代班、新個案不知道安排給誰。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計居家服務排班與路線優化方案：排班原則、路線規劃邏輯（依地理區域分組）、尖峰時段的因應策略、照服員與個案配對考量（性別、語言、技能）、臨時請假代班機制、新個案分派流程、每週排班檢核清單。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "居家用藥管理指導",
+    "category": "居家服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是居家藥事管理護理師，擅長指導家屬正確管理長輩用藥"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "個案J-018，82歲，每天需要吃7種藥（降血壓2種、降血糖1種、降血脂1種、安眠藥1種、胃藥1種、維他命1種），分早中晚三餐後吃。目前由80歲的太太管理用藥，常搞混哪顆什麼時候吃，有一次把早上的藥晚上吃了。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請產出居家用藥管理指導內容：用藥時間對照表（簡單大字版，讓老人家看得懂）、藥盒使用教學步驟、常見用藥錯誤與預防、高風險藥物注意事項、忘記吃藥的處理方式、需要回診的警示症狀、家屬用藥管理SOP。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "居家復健指導計畫",
+    "category": "居家服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是居家復健物理治療師，專精設計可在家執行的復健運動"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "個案K-009，68歲男性，膝關節置換術後4週，已出院回家。目前可使用助行器在室內短距離行走，上下樓梯困難，坐到站需扶著桌子。醫師建議持續復健但不方便每天到醫院。太太可以從旁協助。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計居家復健指導計畫：每日居家運動處方（含動作圖文描述、次數、組數）、一週4次的漸進式訓練計畫（第1-4週逐步增加難度）、太太可以協助的動作、運動前後注意事項、不適時的停止標準、進步自我評估方法。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "居家營養膳食建議",
+    "category": "居家服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是居家營養師，擅長為有飲食限制的長輩設計可行的營養計畫"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "個案L-027，78歲女性，糖尿病+腎臟病第3期+貧血。醫師要求：控制血糖、低蛋白飲食（每天蛋白質40g以下）、限鉀。目前由外籍看護準備三餐，看護廚藝有限。個案食慾不好，不喜歡水煮無味的食物。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計居家營養膳食建議：每日熱量和營養素需求計算、一週7天三餐菜單範例（要好吃又符合限制）、適合外籍看護的簡易食譜（3道）、食物交換表（簡化版）、零食和點心建議、需避免的食物清單、營養補充品建議。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "家屬照顧技巧教學",
+    "category": "居家服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是居家照護技巧指導員，擅長用簡單易懂的方式教家屬照顧技能"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "個案M-033的太太（70歲）需要學習基本照顧技巧：翻身、移位（從床到輪椅）、拍背排痰。太太身材瘦小、腰不好，之前曾因搬先生扭傷腰。先生約75公斤、右側偏癱，可配合但肌力差。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計家屬照顧技巧教學內容：翻身技巧（省力方法，4-5步）、床到輪椅移位技巧（保護照顧者腰部的姿勢）、拍背排痰技巧、照顧者自我保護（正確姿勢、適時休息）、建議輔具（移位滑墊、移位腰帶等）、每個技巧的常見錯誤與正確做法對比。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "居家緊急應變計畫",
+    "category": "居家服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是居家安全管理專員，擅長為個案家庭建立緊急應變計畫"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "個案N-041，85歲獨居女性，輕度失智，使用四腳拐。子女住外縣市。最近鄰居反映個案有一次忘記關瓦斯、有一次半夜在社區遊走。子女很擔心但暫時無法搬來同住。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請建立居家緊急應變計畫：居家安全風險評估清單、緊急聯絡人卡片設計（放在顯眼處）、瓦斯和用電安全措施、走失預防方案（GPS裝置、愛心手鏈等）、鄰居協助機制建立話術、各類緊急狀況處理步驟、科技輔助建議（監視器、智慧音箱等）。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "居家服務品質評估",
+    "category": "居家服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是居家服務品質管理專員，熟悉衛福部居家服務品質指標"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩居家服務本季度數據：服務個案85位、照服員15位、服務滿意度88%（目標90%）、準時到達率92%、服務計畫完成率85%。家屬反映最多的問題是：照服員更換頻繁、臨時取消服務沒有提前通知。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請產出居家服務品質評估報告：各品質指標分析（含趨勢比較）、家屬滿意度的分項分析、問題根因分析、改善行動方案（含負責人和期限）、照服員穩定性的具體策略、下季度品質目標與追蹤計畫。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "居家輔具建議與申請",
+    "category": "居家服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是輔具評估專家，熟悉長照2.0輔具補助項目與申請流程"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "個案O-019，75歲男性，巴金森氏症，行動越來越困難。目前用普通拐杖但常不穩，洗澡需坐在塑膠椅但會滑，上廁所蹲不下去，出門需要輪椅但目前用借的很舊。家屬不知道可以申請補助。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請產出輔具建議與申請指引：依個案需求建議的輔具清單（助行器/洗澡椅/馬桶增高器/輪椅等）、各輔具的功能說明和選購要點、長照2.0輔具補助項目與額度對照表、申請流程步驟（白話文版）、需準備的文件清單、輔具中心聯絡資訊。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "居家感染防護指導",
+    "category": "居家服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是感染控制護理師，擅長指導家屬在居家環境中做好感控"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "流感季節到了，個案P-025是90歲臥床長輩，免疫力低。居家由外籍看護全天照顧。家中有小學生孫子，最近學校有流感群聚。看護不太了解感控觀念，家屬擔心傳染給阿公。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請產出居家感染防護指導內容：家中感染風險評估、手部衛生教學（正確洗手步驟）、呼吸道禮節、環境消毒SOP（哪些地方用什麼消毒劑、多久一次）、訪客管制建議、外籍看護的感控教育重點（簡單中文版）、出現症狀時的處理流程。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "居家臨終照護指導",
+    "category": "居家服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是居家安寧照護護理師，擅長協助家屬在家陪伴臨終長輩"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "個案Q-008，88歲女性，末期肺癌，家屬決定帶回家照顧走最後一程。預估存活期1-2個月。目前症狀：呼吸喘、食慾極差、偶爾疼痛。已簽署DNR。主要照顧者是女兒，從未有照顧臨終者的經驗，非常焦慮。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請產出居家臨終照護指導內容：常見末期症狀的居家處置（呼吸喘、疼痛、噁心、譫妄）、舒適護理措施（口腔照護、皮膚照護、翻身擺位）、什麼時候需要打電話求助、照顧者的情緒支持與自我照顧、靈性照護建議、往生時的處理步驟。語氣溫暖同理。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "居家服務異常事件通報",
+    "category": "居家服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是居家服務督導，需要建立標準化的異常事件通報與處理機制"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "居家服務最近發生幾件異常事件：照服員到案家發現個案跌倒在地（不確定多久了）、有個案家屬質疑照服員偷拿東西、一位個案被發現有不明瘀青（疑似受虐）。目前沒有統一的通報流程，照服員不知道該怎麼處理。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請建立居家服務異常事件通報SOP：事件分類（跌倒/疑似虐待/財物爭議/個案拒絕服務/照服員受傷等）、各類事件的即時處理步驟、通報流程與時限（誰通報誰、多久內）、事件紀錄表格式、調查程序、後續追蹤機制、照服員教育訓練。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "居家服務交接紀錄",
+    "category": "居家服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是居家服務品質管理專員，需要建立照服員更換時的交接制度"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩最近因為照服員離職和調動，有5位個案需要更換照服員。家屬最常抱怨的就是「每次換人又要重新講一遍」「新的照服員不知道我媽媽的習慣」。如何讓交接更順暢、減少家屬的不安？"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計居家服務交接制度：個案資訊交接表格式（含照護重點、個案偏好、家屬注意事項）、交接流程（前任帶新任同行服務至少幾次）、家屬溝通SOP（如何通知家屬、介紹新照服員的話術）、新照服員上線前檢核清單、交接後追蹤機制。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "居家照顧者支持計畫",
+    "category": "居家服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是家庭照顧者支持專員，熟悉各項照顧者支持資源"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "個案R-037的太太（72歲）是主要照顧者，照顧中風的先生已經3年。最近她跟居家護理師說「我好累，有時候真的不想活了」。她拒絕使用喘息服務（覺得別人照顧不好），也不願意參加支持團體（覺得丟臉）。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請制定照顧者支持計畫：照顧者壓力評估（使用ZBI量表或類似工具）、心理危機處理步驟（她提到不想活了）、喘息服務的軟性推薦話術（化解抗拒）、居家可提供的照顧者支持（情緒支持/技巧指導/資源連結）、社區支持資源介紹、專業心理諮商轉介。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "居家膳食照護計畫",
+    "category": "居家服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是居家營養照護專員，擅長為吞嚥困難的長輩設計安全飲食"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "個案S-044，80歲男性，中風後吞嚥困難，經語言治療師評估為IDDSI Level 4（稠化液體+碎食）。目前由外籍看護備餐，但看護不太懂什麼是適當的食物質地，有一次煮了太硬的米飯導致個案嗆咳。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計居家膳食照護計畫：IDDSI食物質地分級說明（白話文+圖片描述）、適合的食物清單和禁忌食物清單、3天菜單範例（含質地處理方式）、看護可操作的食物處理SOP（如何打泥、如何勾芡）、進食姿勢與安全餵食技巧、嗆咳時的緊急處理。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "居家服務月報撰寫",
+    "category": "居家服務",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是居家服務督導，需要每月向主管報告居家服務營運狀況"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "本月居家服務數據：服務個案85位、服務人次2100、新收案5位、結案3位、照服員15位（本月離職1位、新進2位）。重要事件：1位個案住院（肺炎）、2位家屬投訴（服務時間不準時）、完成照服員季度考核。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫居家服務月報：本月營運摘要（3個關鍵數字）、服務量統計（新收案/結案/在案數趨勢）、人力狀況（離職率、訓練情形）、品質指標（滿意度、準時率、投訴件數）、重要事件處理、下月工作重點。簡潔1-2頁。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "員工績效評估報告",
+    "category": "督導管理",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是資深人資主管，擅長撰寫公正有建設性的績效評估報告"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "要為照服員小王做半年度績效評估。小王到職2年，照顧技巧純熟、住民和家屬都很喜歡她。但出勤不穩定（半年遲到8次、請假6天）、紀錄撰寫品質差（常漏寫或太簡略）、不太願意參加教育訓練。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫績效評估報告：各項評估指標評分（照護品質/出勤紀律/紀錄撰寫/團隊合作/學習成長）、優勢肯定（具體事例）、待改善項目（客觀事實描述）、面談話術建議（如何不傷自尊又能改善）、下半年改善計畫。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "新人到職90天培訓計畫",
+    "category": "督導管理",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是長照機構的教育訓練負責人，擅長設計結構化的新人培訓"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩新招了一位照服員小陳（25歲，剛考取照服員證照，無實務經驗）和一位社工小林（28歲，社工系畢業1年，有實習經驗但沒有長照經驗）。需要為他們各設計90天的培訓計畫。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計90天新人培訓計畫（照服員版和社工版各一）：三階段設計（第1-30天認識融入→第31-60天上手實作→第61-90天獨立產出）、每階段的學習目標與任務清單、帶訓人員安排、每週檢核點、通過標準。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "在職教育訓練年度計畫",
+    "category": "督導管理",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是長照機構教育訓練負責人，熟悉法規要求的訓練時數"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩60位員工的年度教育訓練需求：照服員需年度20小時、護理師需繼續教育學分、社工需專業訓練、全員需感控和消防訓練。去年評鑑被指出「訓練紀錄不完整、缺乏訓練成效評估」。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請規劃年度教育訓練計畫：12個月課程排程表（含主題、對象、時數、講師類型）、各職類法規時數對照表、訓練成效評估方式（Kirkpatrick四層次）、訓練紀錄文件模板、預算概算。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "評鑑準備總動員計畫",
+    "category": "督導管理",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是長照機構評鑑準備顧問，熟悉衛福部最新評鑑基準"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩住宿機構預計8月接受評鑑（四年期），距離評鑑還有5個月。上次評鑑被指出的缺失：個案服務紀錄不完整、感染管制紀錄缺漏、員工教育訓練時數不足、品質指標分析缺乏改善追蹤。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請制定評鑑準備計畫：評鑑項目自評檢核表（各面向符合/部分符合/待改善）、針對上次缺失的改善行動計畫、文件準備檢核表、常見缺失預防清單、模擬評鑑建議、倒數5個月的每月任務、評鑑當日注意事項。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "品質指標分析月報",
+    "category": "督導管理",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是長照機構品質管理專員，擅長用數據分析品質趨勢"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "本月品質指標：跌倒發生率2.1%（上月1.8%，目標<2%）、壓瘡新發率0%、非計畫性體重下降率4.3%（偏高）、感染率3.2%、約束使用率8.7%（目標<10%）、住民滿意度88分（目標85分以上）。本月有一起流感群聚事件。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫品質指標月報：各指標數據分析（含6個月趨勢）、異常指標根因分析（跌倒率上升和體重下降率偏高）、改善對策與時程、上月改善計畫追蹤、下月品質工作重點。以專業品管報告格式呈現。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "員工關懷面談指引",
+    "category": "督導管理",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是管理教練，擅長幫主管準備有建設性的員工面談"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩最近員工士氣低落，3個月內離職3人（都是照服員）。院長要求各部門主管跟每位員工做關懷面談，了解他們的工作狀況和需求。但主管們不太會面談，擔心問出敏感問題或做出無法兌現的承諾。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計員工關懷面談指引：面談目的說明、事前準備清單、面談問題設計（10題，涵蓋工作滿意度/壓力源/發展需求/離職風險信號）、面談技巧提示（傾聽/同理/不急著承諾）、面談紀錄表格式、面談後的行動追蹤機制。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "服務流程優化提案",
+    "category": "督導管理",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是流程改善顧問，擅長運用精實管理（Lean）優化服務流程"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩日照中心的早上接送流程經常出狀況：交通車有時遲到、長輩到了沒人接待、健康評估做不完就開始活動、家屬託帶的物品常搞丟。一整個早上（7:30-9:30）都在混亂中度過，工作人員覺得很累。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請提出服務流程優化提案：現況流程盤點（用時間軸呈現痛點）、理想流程設計、各環節的時間標準與負責人、需要的工具或表單、人力重新配置建議、試行計畫（先改哪一段）、預期效益。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "風險管理計畫",
+    "category": "督導管理",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是長照機構風險管理專家，擅長識別和預防各類營運風險"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩院長要求建立一套系統化的風險管理制度。目前的問題：事件通報靠口頭、沒有風險分級、同樣的問題反覆發生（例如跌倒預防做了但還是跌倒）、沒有定期的風險檢視會議。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請制定風險管理計畫：風險辨識方法（RBS風險分類）、風險評估矩陣（機率×影響）、Top 10風險清單（含等級和因應策略）、事件通報制度、根因分析方法（RCA）、風險監控機制（月度風險會議）、風險管理行事曆。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "年度工作報告撰寫",
+    "category": "督導管理",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是機構主管，需要撰寫向董事會和主管機關的年度工作報告"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩今年度重點成果：服務量增長15%、導入AI輔助工具、通過ISO認證、舉辦員工旅遊提升士氣、獲得社會局績優獎勵。挑戰：照服員招募困難、疫情影響家屬探視、設備老舊需更新。明年計畫：擴大日照服務、導入智慧照護系統。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫年度工作報告：機構概況、年度目標回顧（達成vs未達成）、重點成果（用數據說話）、財務概況、人力分析、品質指標趨勢、挑戰與因應、明年度工作計畫、結語。約3000字，語氣專業有信心。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "部門會議主持指引",
+    "category": "督導管理",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是會議效能管理專家，擅長設計高效率的會議流程"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩每週一早上9:00開部門主管會議，但常常開2小時沒結論、大家各說各話、決議事項下週沒人追蹤。院長想改善會議效率，希望控制在1小時內、每次有明確產出。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計部門會議主持指引：會議準備（議程設計、資料事先發送）、會議規則（發言時間限制、討論聚焦技巧）、1小時議程模板（各段落時間分配）、決議事項記錄格式、會後追蹤機制、主持人常用的引導話術（控場、聚焦、收斂）。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "客訴處理與改善報告",
+    "category": "督導管理",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是服務品質管理主管，擅長將客訴轉化為改善動力"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "本月收到3件家屬投訴：1.住民衣服被洗壞（烘乾機溫度太高）2.餐點太鹹住民不願意吃 3.照服員跟家屬講話態度不好。目前處理方式不一致，有的口頭道歉了事、有的拖很久才回覆。院長要求建立標準化處理流程。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請建立客訴處理制度：客訴分級標準、處理流程（接案→調查→回覆→改善→追蹤）、各級客訴的處理時限、回覆家屬的話術範本（電話版和書面版）、本月3件客訴的處理報告範例、月度客訴分析模板、從客訴找系統性問題的方法。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "改善報告撰寫",
+    "category": "督導管理",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是品質管理專家，擅長分析問題根因並撰寫符合評鑑要求的改善報告"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "上次評鑑被指出缺失：「個案服務紀錄不完整，部分個案缺少每月追蹤紀錄」。盤點後發現120位個案中有18位（15%）紀錄有缺漏，原因：照服員交接不確實、記錄表格繁瑣、人力不足導致補登延遲。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫改善報告：缺失說明（事實陳述）、原因分析（5-Why或魚骨圖）、改善措施（至少3項具體可執行行動）、預計改善時程（甘特圖式）、效果追蹤指標、複評結果（填寫模板）。約800字，語氣嚴謹務實。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "內部稽核計畫",
+    "category": "督導管理",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是品質管理系統內部稽核員，熟悉長照機構的稽核項目"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩需要建立內部稽核制度，定期自我檢視各項作業是否符合規定。目前沒有系統化的稽核方式，只在評鑑前才急忙準備。院長希望每季做一次內部稽核，提前發現問題。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請制定內部稽核計畫：稽核範圍（照護品質/感控/安全/文件/人力/財務）、稽核時程表（全年排程）、各領域的稽核項目清單、稽核執行SOP、不符合事項分級標準、矯正預防措施追蹤表、稽核報告模板。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "智慧長照趨勢簡報",
+    "category": "督導管理",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是長照科技趨勢分析師，擅長用簡單語言說明科技應用"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "Allen希望在內部分享會上介紹國內外智慧長照案例，激發團隊對AI應用的想像。對象是受恩全體同仁（多數非IT背景），時間30分鐘。需要讓大家覺得「AI離我們不遠」而不是「這太難了」。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計30分鐘的智慧長照趨勢分享內容：全球長照挑戰（人力不足+成本上升）、4個國內外案例（AI排泄預測/跌倒偵測/語音陪伴/照護記錄自動化）、受恩可以怎麼開始、Allen作業預告。語氣啟發性、不要太技術。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "AI應用提案指導",
+    "category": "督導管理",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是AI應用導入顧問，擅長引導非技術人員構思AI應用方案"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "Allen要求所有同事在課後1個月內提交一個AI應用提案。很多同事不知道從何下手，常見問題：不知道什麼是AI Agent、不知道自己的工作哪裡可以用AI、不會寫提案。需要一份指導手冊幫他們。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計AI應用提案指導手冊：什麼是好的AI應用提案（舉3個範例）、從工作痛點找AI機會的思考框架、提案模板（問題→AI解法→預期效益→可行性）、10個受恩各部門的提案方向靈感、提案常見錯誤與修正建議。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "跨部門協調會議紀錄",
+    "category": "督導管理",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是跨部門協調會議的記錄員兼引導者"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "今天召開護理部門和社工部門的協調會議，議題：個案轉銜流程不順暢（護理評估和社工評估的時間沒對好，家屬要跑兩次）、雙方對「照護計畫由誰主導」有不同看法。氣氛有些緊張。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫跨部門協調會議紀錄：會議基本資訊、各部門立場與理由摘要、討論過程重點、達成的共識、仍有分歧的項目及後續處理方式、決議事項（含負責人和期限）、下次追蹤時間。語氣客觀中性。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "預算執行報告",
+    "category": "督導管理",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是機構財務管理主管，負責向董事會報告預算執行狀況"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩上半年預算執行情形：人事費執行率98%（照服員加班費超支）、業務費80%（部分活動因疫情取消）、設備費45%（採購延遲）、行政費92%。總預算執行率85%，但部分科目有超支、部分嚴重落後。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫半年度預算執行報告：各科目執行率一覽表、超支項目原因分析與因應、落後項目趕辦措施、下半年預算調整建議、現金流預警、需要董事會核准的事項。數據清楚、建議具體。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "策略規劃報告",
+    "category": "督導管理",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是長照機構策略規劃顧問，擅長協助機構制定中長期發展方向"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩院長想做一份3年策略規劃。目前狀況：住宿式60床已滿、日照30人有擴大空間、居家服務85人可成長、社區據點想增設。外部環境：長照2.0政策利多、但人力短缺是全國性問題、同區域競爭者增加3家。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請撰寫3年策略規劃報告：SWOT分析、策略願景與使命、3年策略目標（財務/服務/人力/品質面向）、各年度的策略主軸與重點行動、資源需求評估、風險與挑戰因應、關鍵里程碑。讓董事會覺得「有方向、有信心」。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+<script type="text/template-data">
+{
+    "name": "離職面談與分析",
+    "category": "督導管理",
+    "structure": [
+        {
+            "type": "textarea",
+            "id": "role",
+            "label": "👤 角色設定",
+            "placeholder": "你是人力資源管理師，擅長從離職面談中找出組織改善方向"
+        },
+        {
+            "type": "textarea",
+            "id": "context",
+            "label": "📋 情境描述",
+            "placeholder": "受恩今年已有8位員工離職（5位照服員、2位護理師、1位行政），年離職率約15%。離職原因五花八門：薪資太低、工作壓力大、夜班太辛苦、跟同事相處不好、找到更好的工作。院長想了解真正的原因和對策。"
+        },
+        {
+            "type": "textarea",
+            "id": "expectation",
+            "label": "🎯 期望產出",
+            "placeholder": "請設計離職面談與分析制度：離職面談問題設計（15題，涵蓋離職動機/工作體驗/管理回饋/建議）、面談執行要點（如何讓離職者願意說真話）、離職原因分析框架（推力vs拉力分析）、本年度離職分析報告模板、留才策略建議（針對前3大離職原因）。"
+        }
+    ]
+}
+---PROMPT---
+請根據以下「角色、情境、期望」三要素，產出專業且可直接使用的內容。
+
+【角色】
+<<<{role}>>>
+
+【情境】
+<<<{context}>>>
+
+【期望】
+<<<{expectation}>>>
+
+請確保產出內容：
+1. 專業度：符合長照產業的專業標準與法規要求
+2. 實用性：可以直接應用在實際工作中
+3. 格式化：結構清楚、條理分明、易於閱讀
+4. 個資保護：不使用真實個案姓名，以代號或化名替代
+</script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const templates = {};
+        const categories = new Set();
+
+        document.querySelectorAll('script[type="text/template-data"]').forEach(function(el, index) {
+            const id = 'template_' + index;
+            try {
+                const content = el.textContent.trim().split('---PROMPT---');
+                const header = JSON.parse(content[0]);
+                const prompt = content[1].trim();
+                templates[id] = {
+                    name: header.name,
+                    structure: header.structure,
+                    template: prompt,
+                    category: header.category || '未分類'
+                };
+                categories.add(header.category || '未分類');
+            } catch (e) {
+                console.error("Error parsing template:", e);
+            }
+        });
+
+        const filterContainer = document.getElementById('category-filters');
+        if (categories.size > 0) {
+            const categoryCounts = {};
+            Object.values(templates).forEach(t => {
+                categoryCounts[t.category] = (categoryCounts[t.category] || 0) + 1;
+            });
+
+            let allBtn = document.createElement('button');
+            allBtn.className = 'btn btn-secondary btn-sm filter-btn active';
+            allBtn.dataset.category = 'all';
+            allBtn.innerHTML = '全部顯示 <span class="template-count">(' + Object.keys(templates).length + ')</span>';
+            filterContainer.appendChild(allBtn);
+
+            const order = ['社工服務','護理照護','行政後勤','活動設計','居家服務','督導管理'];
+            const icons = {'社工服務':'👥','護理照護':'💊','行政後勤':'📁','活動設計':'🎨','居家服務':'🏠','督導管理':'📊'};
+            order.forEach(cat => {
+                if (categories.has(cat)) {
+                    let btn = document.createElement('button');
+                    btn.className = 'btn btn-outline-secondary btn-sm filter-btn';
+                    btn.dataset.category = cat;
+                    btn.innerHTML = (icons[cat]||'') + ' ' + cat + ' <span class="template-count">(' + (categoryCounts[cat]||0) + ')</span>';
+                    filterContainer.appendChild(btn);
+                }
+            });
+        }
+
+        const populateDropdown = (filterCategory) => {
+            const selector = document.getElementById('templateSelector');
+            selector.innerHTML = '';
+            Object.keys(templates).forEach(id => {
+                const t = templates[id];
+                if (filterCategory === 'all' || t.category === filterCategory) {
+                    const opt = document.createElement('option');
+                    opt.value = id;
+                    opt.textContent = t.name;
+                    selector.appendChild(opt);
+                }
+            });
+            if (selector.options.length > 0) {
+                selector.dispatchEvent(new Event('change'));
+            }
+        };
+
+        const buildForm = (key) => {
+            if (!key || !templates[key]) return;
+            const c = document.getElementById('prompt-form-container');
+            c.innerHTML = '';
+            templates[key].structure.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'mb-3';
+                const label = document.createElement('label');
+                label.className = 'form-label';
+                label.setAttribute('for', item.id);
+                label.innerHTML = '<strong>' + item.label + '</strong>';
+                div.appendChild(label);
+
+                let el;
+                if (item.type === 'textarea') {
+                    el = document.createElement('textarea');
+                    el.className = 'form-control form-control-lg prompt-input';
+                } else {
+                    el = document.createElement('input');
+                    el.type = 'text';
+                    el.className = 'form-control prompt-input';
+                }
+                el.id = item.id;
+                el.placeholder = item.placeholder;
+                el.addEventListener('input', updatePrompt);
+                div.appendChild(el);
+                c.appendChild(div);
+            });
+            updatePrompt();
+        };
+
+        const updatePrompt = () => {
+            const key = document.getElementById('templateSelector').value;
+            if (!key || !templates[key]) return;
+            let tpl = templates[key].template;
+            templates[key].structure.forEach(item => {
+                const el = document.getElementById(item.id);
+                const val = el ? (el.value || el.placeholder) : '';
+                tpl = tpl.replace(new RegExp('<<<\\{' + item.id + '\\}>>>', 'g'), val);
+            });
+            document.getElementById('output').textContent = tpl;
+        };
+
+        filterContainer.addEventListener('click', function(e) {
+            const btn = e.target.closest('.filter-btn');
+            if (!btn) return;
+            document.querySelectorAll('.filter-btn').forEach(b => {
+                b.classList.remove('active', 'btn-secondary');
+                b.classList.add('btn-outline-secondary');
+            });
+            btn.classList.add('active', 'btn-secondary');
+            btn.classList.remove('btn-outline-secondary');
+            populateDropdown(btn.dataset.category);
+        });
+
+        document.getElementById('templateSelector').addEventListener('change', function() {
+            buildForm(this.value);
+        });
+
+        document.getElementById('copyBtn').addEventListener('click', function() {
+            const text = document.getElementById('output').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = this;
+                btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>已複製!';
+                setTimeout(() => btn.innerHTML = '<i class="bi bi-clipboard me-1"></i>複製', 2000);
+            });
+        });
+
+        populateDropdown('all');
+    });
+    </script>
+</body>
+</html>
